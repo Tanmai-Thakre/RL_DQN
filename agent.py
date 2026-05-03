@@ -12,19 +12,20 @@ import torch.optim as optim
 import argparse
 import os
 
-RUNS_DIR = 'runs'
-os.makedirs(RUNS_DIR , exist_ok=True)
 
-
-env = gym.make("FlappyBird-v0", render_mode="human")
-
-
-if torch.backend.mps.isavailable():
+if torch.backends.mps.is_available():
     device = "mps"
-elif torch.backend.cuda.isavailable():
+elif torch.cuda.is_available():
     device = "cuda"
 else:
     device = "cpu"
+    
+    
+RUNS_DIR = 'runs'
+os.makedirs(RUNS_DIR , exist_ok=True)
+
+env = gym.make("FlappyBird-v0", render_mode="human")
+    
     
 class Agent:
     def __init__(self , param_set):
@@ -57,8 +58,8 @@ class Agent:
     def run(self ,is_training = True , render = False ):
         env = gym.make("FlappyBird-v0", render_mode="human" if render else None)
         
-        action_num = env.action_space.n
         state_num = env.observation_space.shape[0]
+        action_num = env.action_space.n
         
         policy_dqn = DQN(state_num , action_num).to(device)
         
@@ -72,7 +73,7 @@ class Agent:
             
             steps = 0
             
-            self.optimizer = optim.adam(policy_dqn.parameters() , lr = self.alpha)          
+            self.optimizer = optim.Adam(policy_dqn.parameters() , lr = self.alpha)          
             
             best_reward = float("-inf")
             
@@ -82,7 +83,7 @@ class Agent:
             policy_dqn.eval()
         
         
-        for episode in itertools:
+        for episode in itertools.count():
             state, _ = env.reset()
             state = torch.tensor(state , dtype=torch.float , device = device)
             
@@ -96,12 +97,13 @@ class Agent:
                     action = env.action_space.sample()                                      # Explore
                     action = torch.tensor(action , dtype= torch.long , device = device)
                 else:
-                    with torch.no_grad:
+                    with torch.no_grad():
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()           # Exploit 
                         action = torch.tensor(action , dtype=torch.long , device = device)
 
                 # Processing:
                 next_state, reward, terminated, _, _ = env.step(action)
+                episode_reward += reward
                 
                 # Create tensors 
                 reward = torch.tensor(reward , dtype = torch.float , device = device)
@@ -112,7 +114,7 @@ class Agent:
                     steps += 1 
                 
                 state = next_state
-                episode_reward += reward
+                
                 episode_len += 1
                 
             print(f"Episode : {episode+1} => Rewards : {episode_reward} & Epsilon : {epsilon}")
@@ -126,7 +128,7 @@ class Agent:
                     log_msg = f"Best reward : {best_reward} for episode : {episode+1}"
                     
                     with open (self.LOG_FILE , "a") as file:
-                        file.write(log_msg, "\n")
+                        file.write(f"{log_msg} \n")
                         
                     torch.save(policy_dqn.state_dict() , self.MODEL_FILE)
                     best_reward = episode_reward
@@ -141,10 +143,10 @@ class Agent:
                 if steps > self.netwaork_sync_rate:
                     target_dqn.load_state_dict(policy_dqn.state_dict())
                     steps = 0
-              
-            
+                          
             
         # env.close() ----> Manually ending 
+
 
     def optimize(self, mini_batch, policy_dqn, target_dqn):
         # get batch of experiences

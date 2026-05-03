@@ -8,10 +8,10 @@ class ReplayMemory():
         self.memory = deque([], maxlen=maxlen)
         
     def append(self, new_exp):
-        self.memory = deque.append(new_exp)
+        self.memory.append(new_exp)
         
-    def sample(sample_size):
-        return random(self.memory , sample_size)
+    def sample(self , sample_size):
+        return random.sample(self.memory , sample_size)
     
     def __len__(self):
         return len(self.memory)
