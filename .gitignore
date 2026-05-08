@@ -4,3 +4,6 @@
 anaconda_projects
 
 __pycache__
+
+runs/*.pt
+.pt
